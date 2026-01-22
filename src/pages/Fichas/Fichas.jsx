@@ -1,36 +1,31 @@
 import { useState, useRef } from "react"
-
-// Componentes da página
 import FotoPersonagem from './components/FotoPersonagem'
 import TabelaStatus from './components/TabelaStatus'
 import GraficoRadar from './components/GraficoRadar'
 import ModalNotas from './components/ModalNotas'
 import ModalDistribuicao from './components/ModalDistribuicao'
-
-// Constantes
+import BotaoNovoPersonagem from './components/BotaoNovoPersonagem'
+import ModalConfirmarSalvar from './components/ModalConfirmarSalvar'
+import GavetaPersonagens from './components/GavetaPersonagens'
+import { usePersonagens } from '../../hooks/usePersonagens'
 import { STATUS, STATUS_INICIAL } from '../../constants/status'
 
 export default function Fichas() {
   const fileInputRef = useRef(null)
+  const { personagens, salvar, excluir } = usePersonagens()
   
   const [baseStatus, setBaseStatus] = useState(
     Object.fromEntries(STATUS.map(s => [s.key, STATUS_INICIAL]))
   )
-
   const [distribuicao, setDistribuicao] = useState({
-    vantagem2: null,
-    vantagem1: null,
-    desvantagem2: null,
-    desvantagem1: null,
+    vantagem2: null, vantagem1: null, desvantagem2: null, desvantagem1: null
   })
-
   const [nome, setNome] = useState("")
   const [foto, setFoto] = useState(null)
+  const [notas, setNotas] = useState("")
   const [mostrarNotas, setMostrarNotas] = useState(false)
   const [mostrarDistribuicao, setMostrarDistribuicao] = useState(false)
-  const [notas, setNotas] = useState("")
-
-  /* ===================== STATUS ===================== */
+  const [mostrarConfirmarSalvar, setMostrarConfirmarSalvar] = useState(false)
 
   function alterarBase(status, valor) {
     if (valor < 1) return
@@ -38,7 +33,7 @@ export default function Fichas() {
   }
 
   function resetarAtributo(status) {
-    setBaseStatus(prev => ({ ...prev, [status]: STATUS_INICIAL }))
+    setBaseStatus(prev => ({ ...prev, [status]: STATUS_INICIAL })) 
     setDistribuicao(prev => {
       const novo = { ...prev }
       Object.keys(novo).forEach(tipo => {
@@ -68,13 +63,8 @@ export default function Fichas() {
   }
 
   function marcar(tipo, status) {
-    if (
-      Object.values(distribuicao).includes(status) &&
-      distribuicao[tipo] !== status
-    ) return
-
+    if (Object.values(distribuicao).includes(status) && distribuicao[tipo] !== status) return
     if (!podeMarcar(tipo)) return
-
     setDistribuicao(prev => ({
       ...prev,
       [tipo]: prev[tipo] === status ? null : status,
@@ -86,34 +76,20 @@ export default function Fichas() {
     (!!distribuicao.vantagem1 === !!distribuicao.desvantagem1)
 
   function resetarFicha() {
-    setBaseStatus(
-      Object.fromEntries(STATUS.map(s => [s.key, STATUS_INICIAL]))
-    )
-    setDistribuicao({
-      vantagem2: null,
-      vantagem1: null,
-      desvantagem2: null,
-      desvantagem1: null,
-    })
+    setBaseStatus(Object.fromEntries(STATUS.map(s => [s.key, STATUS_INICIAL])))
+    setDistribuicao({ vantagem2: null, vantagem1: null, desvantagem2: null, desvantagem1: null })
     setNome("")
     setFoto(null)
     setNotas("")
   }
 
-  /* ===================== CONTADOR ===================== */
-
-  const pontosDistribuidos = Object.values(baseStatus)
-    .reduce((a, b) => a + b, 0) - STATUS.length * STATUS_INICIAL
-
-  /* ===================== PERÍCIAS ===================== */
+  const pontosDistribuidos = Object.values(baseStatus).reduce((a, b) => a + b, 0) - STATUS.length * STATUS_INICIAL
 
   function modificadorPericia(status) {
     const valor = valorFinal(status)
     if (valor <= 6) return -2
     return Math.floor((valor - 6) / 2) - 2
   }
-
-  /* ===================== FOTO ===================== */
 
   function handleFoto(e) {
     const file = e.target.files?.[0]
@@ -123,7 +99,28 @@ export default function Fichas() {
     reader.readAsDataURL(file)
   }
 
-  /* ===================== DADOS PARA COMPONENTES ===================== */
+  function handleSalvar() {
+    if (!nome.trim()) {
+      alert("Insira um nome para o personagem")
+      return
+    }
+    setMostrarConfirmarSalvar(true)
+  }
+
+  function confirmarSalvar(categoria) {
+    salvar({ nome, categoria, foto, baseStatus, distribuicao, notas, pontosDistribuidos })
+    setMostrarConfirmarSalvar(false)
+    alert(`"${nome}" salvo com sucesso!`)
+  }
+
+  function carregarPersonagem(personagem) {
+    setNome(personagem.nome)
+    setFoto(personagem.foto || null)
+    setBaseStatus(personagem.baseStatus)
+    setDistribuicao(personagem.distribuicao)
+    setNotas(personagem.notas || "")
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   const dadosGrafico = STATUS.map(s => ({
     atributo: s.label,
@@ -140,12 +137,11 @@ export default function Fichas() {
 
   return (
     <div className="min-h-screen p-4 bg-background text-foreground">
-      <h2 className="text-3xl font-bold text-center mb-6">
-        Ficha do Personagem
-      </h2>
+      <h2 className="text-3xl font-bold text-center mb-6">Ficha do Personagem</h2>
+
+      <BotaoNovoPersonagem onClick={resetarFicha} />
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_2.4fr_1.2fr] gap-6 max-w-7xl mx-auto">
-        
         <FotoPersonagem
           foto={foto}
           nome={nome}
@@ -167,6 +163,7 @@ export default function Fichas() {
           podeMarcar={podeMarcar}
           valorFinal={valorFinal}
           onAbrirModalDistribuicao={() => setMostrarDistribuicao(true)}
+          onSalvar={handleSalvar}
         />
 
         <GraficoRadar dados={dadosGrafico} />
@@ -185,6 +182,19 @@ export default function Fichas() {
         baseStatus={baseStatus}
         onFechar={() => setMostrarDistribuicao(false)}
       />
+
+      <ModalConfirmarSalvar
+        aberto={mostrarConfirmarSalvar}
+        nome={nome}
+        onConfirmar={confirmarSalvar}
+        onCancelar={() => setMostrarConfirmarSalvar(false)}
+      />
+
+      <GavetaPersonagens
+        personagens={personagens}
+        onCarregar={carregarPersonagem}
+        onExcluir={excluir}
+      />
     </div>
   )
-} 
+}

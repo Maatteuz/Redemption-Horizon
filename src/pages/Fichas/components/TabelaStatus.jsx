@@ -13,7 +13,8 @@ export default function TabelaStatus({
   onResetarFicha, 
   podeMarcar, 
   valorFinal,
-  onAbrirModalDistribuicao
+  onAbrirModalDistribuicao,
+  onSalvar  
 }) {
   return (
     <section className="rounded-xl p-4 bg-(--surface) overflow-x-auto">
@@ -71,6 +72,7 @@ export default function TabelaStatus({
       <div className="flex gap-3 mt-4">
         <button
           disabled={!distribuicaoValida}
+          onClick={onSalvar} 
           className={`flex-1 py-2 rounded font-semibold transition-colors
             ${distribuicaoValida
               ? "cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90"
